@@ -26,6 +26,7 @@ int position;
 #define LONG   1
 #define SHORT  2
 
+
 double position_size;
 double entry_level;
 

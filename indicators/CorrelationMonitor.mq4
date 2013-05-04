@@ -8,13 +8,14 @@
 
 #property indicator_separate_window
 //--- input parameters
-extern int       period=100;
+extern int       period=50;
 extern bool      eurusd=true;
 extern bool      usdjpy=true;
 extern bool      gbpusd=true;
 extern bool      usdchf=true;
 extern bool      usdcad=true;
 extern bool      audusd=true;
+extern bool      eurgbp=true;
 extern bool      nzdusd=true;
 extern bool      xauusd=true;
 extern bool      xagusd=true;
@@ -32,21 +33,32 @@ extern int distance_y = 15;
 
 
 void get_correlation(string symbol){
-   int i;
+   int i, i_max;
    double corr, diffxy, diffxx, diffyy, mu_x, mu_y;
    double retsum_x, retsum_y;
    double ret_x[], ret_y[];
+   double open_x, open_y, close_x, close_y;
    
    ArrayResize(ret_x, period);
    ArrayResize(ret_y, period);
 
+   
    // Calculate past returns
-   for(i=0; i<period; i++){
-      ret_x[i] = (iClose(Symbol(),NULL,i)-iOpen(Symbol(),NULL,i))/iOpen(Symbol(),NULL,i);
-      ret_y[i] = (iClose(symbol,NULL,i)-iOpen(symbol,NULL,i))/iOpen(symbol,NULL,i);
+   i_max = period;
+   for(i=0; i<i_max && i<Bars; i++){
+      open_x = iOpen(Symbol(),NULL,i);
+      close_x = iClose(Symbol(),NULL,i);
+      open_y = iOpen(symbol,NULL,i);
+      close_y = iClose(symbol,NULL,i);
       
-      retsum_x += ret_x[i];
-      retsum_y += ret_y[i];
+      if(open_x*open_y == 0 )
+         i_max++;
+      else{
+         ret_x[i] = (close_x-open_x)/open_x;
+         ret_y[i] = (close_y-open_y)/open_y;
+         retsum_x += ret_x[i];
+         retsum_y += ret_y[i];
+      }
    }
    
    // Calculate return average
@@ -60,7 +72,10 @@ void get_correlation(string symbol){
       diffxx += MathPow(ret_x[i]-mu_x,2);
       diffyy += MathPow(ret_y[i]-mu_y,2); 
    }
-   corr = diffxy/MathSqrt(diffxx*diffyy);
+   if( diffxx*diffyy != 0 )
+      corr = diffxy/MathSqrt(diffxx*diffyy);
+   else
+      corr = NULL;
    ObjectSetText(symbol, symbol+": "+DoubleToStr(corr, 2), font_size, font_face, font_color);
 }
 
@@ -97,6 +112,11 @@ int init()
    ObjectSet("AUDUSD", OBJPROP_CORNER, corner);
    ObjectSet("AUDUSD", OBJPROP_XDISTANCE, distance_x);
    ObjectSet("AUDUSD", OBJPROP_YDISTANCE, 6*distance_y);
+
+   ObjectCreate("EURGBP", OBJ_LABEL, WindowFind("CorrelationMonitor"), 0, 0);
+   ObjectSet("EURGBP", OBJPROP_CORNER, corner);
+   ObjectSet("EURGBP", OBJPROP_XDISTANCE, distance_x);
+   ObjectSet("EURGBP", OBJPROP_YDISTANCE, 7*distance_y);
    
    ObjectCreate("NZDUSD", OBJ_LABEL, WindowFind("CorrelationMonitor"), 0, 0);
    ObjectSet("NZDUSD", OBJPROP_CORNER, corner);
@@ -155,6 +175,7 @@ int deinit()
    ObjectDelete("GBPJPY");
    ObjectDelete("AUDJPY");
    ObjectDelete("NZDJPY");
+   ObjectDelete("EURGBP");
 //----
    return(0);
   }
@@ -170,6 +191,7 @@ int start()
    if(usdchf) get_correlation("USDCHF");
    if(usdcad) get_correlation("USDCAD");
    if(audusd) get_correlation("AUDUSD");
+   if(eurgbp) get_correlation("EURGBP");
    if(nzdusd) get_correlation("NZDUSD");
    if(xauusd) get_correlation("XAUUSD");
    if(xagusd) get_correlation("XAGUSD");
